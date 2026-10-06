@@ -283,7 +283,13 @@ section h2 { font-family: var(--display); font-weight: 400; font-size: 20px; mar
   const rnd = n => { const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n; };
   const shuffle = arr => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   const sleep = ms => new Promise(r => setTimeout(r, ms));
-  const tween = (dur, fn, ease = t => t) => new Promise(r => { const t0 = performance.now(); const f = now => { const p = Math.min(1, (now - t0) / dur); fn(ease(p), p); p < 1 ? requestAnimationFrame(f) : r(); }; requestAnimationFrame(f); });
+  // time-based, driven by rAF plus a timer fallback so the reveal still finishes if the browser throttles animation frames
+  const tween = (dur, fn, ease = t => t) => new Promise(r => {
+    const t0 = performance.now(); let done = false;
+    const step = () => { if (done) return; const p = Math.min(1, (performance.now() - t0) / dur); fn(ease(p), p); if (p >= 1) { done = true; clearInterval(iv); r(); } };
+    const loop = () => { step(); if (!done) requestAnimationFrame(loop); };
+    const iv = setInterval(step, 50); requestAnimationFrame(loop);
+  });
   const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
 
   // ---------- sound ----------
