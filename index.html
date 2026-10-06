@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1b1230">
+<title>아이스크림 물주 뽑기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap">
+<style>
+/* Layout: one narrow column (phone-first), roster → mode picker → ranking, big draw button pinned to the bottom.
+   Look: a single "ice cream parlor after dark" world — deep plum ground, strawberry + mint scoops. */
+:root {
+  --bg: #1b1230;
+  --surface: #281c44;
+  --surface-2: #34265a;
+  --line: #4a3a78;
+  --fg: #fff4dc;          /* vanilla */
+  --muted: #b9a9d6;
+  --berry: #ff5f93;       /* strawberry: the one loud accent */
+  --mint: #7ff0c8;
+  --gold: #ffd166;
+  --display: "Black Han Sans", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px;
+  -webkit-tap-highlight-color: transparent;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--mint); outline-offset: 2px; }
+.wrap { max-width: 520px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 120px; display: grid; gap: 22px; }
+
+header .eyebrow { font-size: 12px; letter-spacing: .12em; color: var(--mint); font-weight: 700; }
+header h1 { font-family: var(--display); font-weight: 400; font-size: 40px; line-height: 1.05; margin: 6px 0 0; text-wrap: balance; }
+header h1 span { color: var(--berry); }
+header p { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
+
+section > .head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+section h2 { font-family: var(--display); font-weight: 400; font-size: 20px; margin: 0; }
+.count { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; margin-left: 6px; font-family: var(--body); }
+.link { background: none; border: 0; color: var(--mint); font-size: 13px; font-weight: 600; padding: 6px 4px; }
+
+.roster { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.chip {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 10px 6px 8px; border-radius: 14px; border: 2px solid var(--line); background: var(--surface);
+  transition: transform .12s, opacity .15s;
+}
+.chip:active { transform: scale(.96); }
+.chip .em { font-size: 30px; line-height: 1.1; }
+.chip .nm { font-weight: 700; font-size: 14px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip.on { border-color: var(--mint); background: var(--surface-2); }
+.chip.off { opacity: .38; }
+.chip.off .nm { text-decoration: line-through; }
+.chip .tag { position: absolute; top: 4px; left: 6px; font-size: 10px; color: var(--gold); font-weight: 700; }
+.chip .del {
+  position: absolute; top: -6px; right: -6px; width: 26px; height: 26px; border-radius: 50%;
+  background: var(--berry); color: var(--bg); border: 0; font-weight: 700; display: none; line-height: 26px; padding: 0;
+}
+.editing .chip .del { display: block; }
+.hint { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
+
+.add { margin-top: 12px; display: grid; grid-template-columns: auto 1fr; gap: 8px; }
+.add .emoji-btn { width: 48px; height: 48px; border-radius: 12px; border: 2px solid var(--line); background: var(--surface); font-size: 26px; padding: 0; }
+.add input { min-width: 0; height: 48px; border-radius: 12px; border: 2px solid var(--line); background: var(--surface); color: var(--fg); padding: 0 12px; font: inherit; font-size: 16px; }
+.add .btns { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.btn { height: 44px; border-radius: 12px; border: 2px solid var(--line); background: var(--surface-2); font-weight: 700; }
+.btn.alt { border-color: var(--gold); color: var(--gold); background: transparent; }
+.palette { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; background: var(--surface); border-radius: 12px; padding: 8px; }
+.palette button { background: none; border: 0; font-size: 24px; padding: 4px 0; border-radius: 8px; }
+.palette button.sel { background: var(--surface-2); }
+
+.modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mode { text-align: left; padding: 12px; border-radius: 14px; border: 2px solid var(--line); background: var(--surface); display: grid; gap: 2px; }
+.mode b { font-size: 15px; }
+.mode small { color: var(--muted); font-size: 12px; line-height: 1.35; }
+.mode.sel { border-color: var(--berry); background: var(--surface-2); }
+.mode.sel b { color: var(--berry); }
+.mode.wide { grid-column: 1 / -1; }
+
+.rank { display: grid; gap: 6px; }
+.rank-row { display: grid; grid-template-columns: 28px 34px 1fr auto; align-items: center; gap: 6px; padding: 8px 12px; background: var(--surface); border-radius: 12px; }
+.rank-row .pos { font-family: var(--display); color: var(--muted); }
+.rank-row:first-child .pos { color: var(--gold); }
+.rank-row .em { font-size: 22px; }
+.rank-row .n { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--berry); }
+.empty { color: var(--muted); font-size: 13px; padding: 12px; background: var(--surface); border-radius: 12px; }
+.last { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+.dock {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(to top, var(--bg) 70%, transparent);
+}
+.go {
+  display: block; width: 100%; max-width: 488px; margin: 0 auto; height: 64px; border: 0; border-radius: 20px;
+  background: var(--berry); color: var(--bg); font-family: var(--display); font-size: 26px;
+  box-shadow: 0 6px 0 #b23565; transition: transform .08s, box-shadow .08s;
+}
+.go:active { transform: translateY(4px); box-shadow: 0 2px 0 #b23565; }
+.go:disabled { background: var(--surface-2); color: var(--muted); box-shadow: none; }
+
+/* ---------- stage ---------- */
+.stage { position: fixed; inset: 0; z-index: 20; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px)); overflow: hidden; }
+.stage-title { position: absolute; top: calc(18px + env(safe-area-inset-top, 0px)); left: 0; right: 0; text-align: center; font-family: var(--display); font-size: 22px; color: var(--mint); }
+.stage-sub { position: absolute; bottom: calc(26px + env(safe-area-inset-bottom, 0px)); left: 0; right: 0; text-align: center; color: var(--muted); font-size: 14px; }
+.arena { width: min(92vw, 420px); position: relative; }
+.shake { animation: shake .5s; }
+@keyframes shake { 10%,90%{transform:translate(-2px,1px)} 20%,80%{transform:translate(4px,-2px)} 30%,50%,70%{transform:translate(-8px,3px)} 40%,60%{transform:translate(8px,-3px)} }
+.flash { position: absolute; inset: 0; background: var(--fg); opacity: 0; pointer-events: none; }
+.flash.go-flash { animation: flash .5s ease-out; }
+@keyframes flash { 0% { opacity: .9 } 100% { opacity: 0 } }
+
+/* slot */
+.reel { height: 300px; overflow: hidden; border-radius: 22px; background: var(--surface); border: 4px solid var(--gold); position: relative; }
+.reel::before, .reel::after { content: ""; position: absolute; left: 0; right: 0; height: 100px; z-index: 2; pointer-events: none; }
+.reel::before { top: 0; background: linear-gradient(var(--surface), transparent); }
+.reel::after { bottom: 0; background: linear-gradient(transparent, var(--surface)); }
+.reel .win { position: absolute; left: 8px; right: 8px; top: 100px; height: 100px; border: 3px solid var(--berry); border-radius: 14px; z-index: 3; pointer-events: none; }
+.strip { will-change: transform; }
+.cell { height: 100px; display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 30px; font-weight: 700; }
+.cell .em { font-size: 52px; }
+
+/* roulette */
+.wheel-box { position: relative; width: 100%; aspect-ratio: 1; max-width: 100%; }
+.wheel-box canvas { width: 100%; height: 100%; display: block; will-change: transform; }
+.pointer { position: absolute; top: -8px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 18px solid transparent; border-right: 18px solid transparent; border-top: 34px solid var(--fg); z-index: 2; filter: drop-shadow(0 3px 0 var(--berry)); }
+.pointer.tick { animation: tick .1s; }
+@keyframes tick { 50% { transform: translateX(-50%) rotate(-14deg); } }
+.hub { position: absolute; inset: 42%; border-radius: 50%; background: var(--bg); border: 4px solid var(--gold); display: grid; place-items: center; font-size: 26px; }
+
+/* tiles (spotlight / bomb / cards) */
+.tiles { display: grid; grid-template-columns: repeat(var(--cols, 3), 1fr); gap: 10px; }
+.tile { aspect-ratio: 1; border-radius: 18px; background: var(--surface); border: 3px solid var(--line); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; transition: transform .1s, background .1s, border-color .1s, opacity .2s; }
+.tile .em { font-size: 40px; line-height: 1; }
+.tile .nm { font-weight: 700; font-size: 14px; max-width: 92%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dark .tile { opacity: .18; }
+.dark .tile.lit { opacity: 1; background: var(--surface-2); border-color: var(--gold); transform: scale(1.08); box-shadow: 0 0 40px var(--gold); }
+.tile.lose { opacity: 1 !important; background: var(--berry) !important; border-color: var(--fg) !important; color: var(--bg); transform: scale(1.15); }
+
+.ring { position: relative; width: 100%; aspect-ratio: 1; max-width: 100%; }
+.ring .tile { position: absolute; width: 23%; aspect-ratio: 1; transform: translate(-50%, -50%); }
+.ring .tile .em { font-size: 30px; }
+.ring .tile .nm { font-size: 12px; }
+.ring .tile.hot { border-color: var(--berry); background: var(--surface-2); }
+.ring .tile.lose { transform: translate(-50%, -50%) scale(1.25); }
+.bomb { position: absolute; font-size: 44px; transform: translate(-50%, -110%); transition: left .13s ease-out, top .13s ease-out; z-index: 3; pointer-events: none; }
+.bomb.pulse { animation: pulse .25s infinite; }
+@keyframes pulse { 50% { transform: translate(-50%, -110%) scale(1.25); } }
+.fuse { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); text-align: center; }
+.fuse .t { font-family: var(--display); font-size: 54px; color: var(--berry); font-variant-numeric: tabular-nums; }
+.fuse .bar { width: 120px; height: 8px; border-radius: 4px; background: var(--surface); overflow: hidden; margin: 4px auto 0; }
+.fuse .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), var(--berry)); }
+.boom { position: absolute; font-family: var(--display); font-size: 96px; color: var(--gold); left: 50%; top: 50%; transform: translate(-50%, -50%) scale(.2); opacity: 0; pointer-events: none; z-index: 4; text-shadow: 0 0 30px var(--berry); }
+.boom.on { animation: boom .7s ease-out forwards; }
+@keyframes boom { 0% { opacity: 1; transform: translate(-50%,-50%) scale(.2) } 60% { opacity: 1; transform: translate(-50%,-50%) scale(1.3) } 100% { opacity: 0; transform: translate(-50%,-50%) scale(1.6) } }
+
+.card { perspective: 600px; aspect-ratio: 3/4; }
+.card .in { position: relative; width: 100%; height: 100%; transition: transform .45s; transform-style: preserve-3d; }
+.card.flip .in { transform: rotateY(180deg); }
+.card .f, .card .b { position: absolute; inset: 0; border-radius: 14px; backface-visibility: hidden; -webkit-backface-visibility: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 3px solid var(--line); }
+.card .b { background: repeating-linear-gradient(45deg, var(--surface) 0 10px, var(--surface-2) 10px 20px); font-family: var(--display); font-size: 34px; color: var(--muted); }
+.card .f { background: var(--surface-2); transform: rotateY(180deg); }
+.card .f .em { font-size: 34px; }
+.card .f .nm { font-weight: 700; font-size: 13px; max-width: 92%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card .f .ok { font-size: 11px; color: var(--mint); font-weight: 700; }
+.card.loser .f { background: var(--berry); color: var(--bg); border-color: var(--fg); }
+.card.loser .f .ok { color: var(--bg); }
+.card.shuf { animation: shuf .5s ease-in-out 2; }
+@keyframes shuf { 25% { transform: translate(var(--dx), var(--dy)) rotate(-6deg) } 75% { transform: translate(calc(var(--dx) * -1), calc(var(--dy) * -1)) rotate(6deg) } }
+.card.wobble { animation: wob .3s infinite; }
+@keyframes wob { 25% { transform: rotate(-3deg) } 75% { transform: rotate(3deg) } }
+
+.list { display: grid; gap: 8px; }
+.row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 14px; background: var(--surface); border: 3px solid var(--line); transition: transform .4s, opacity .4s; font-size: 18px; font-weight: 700; }
+.row .em { font-size: 30px; }
+.row .st { margin-left: auto; font-size: 13px; color: var(--mint); }
+.row.safe { transform: translateX(110%); opacity: 0; }
+.row.stamp { border-color: var(--mint); }
+.row.hot { border-color: var(--gold); background: var(--surface-2); }
+.row.lose { background: var(--berry); color: var(--bg); border-color: var(--fg); transform: scale(1.06); }
+
+/* result */
+.result { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; padding: 24px 16px calc(24px + env(safe-area-inset-bottom, 0px)); background: radial-gradient(circle at 50% 42%, #5a1f4a 0, var(--bg) 70%); z-index: 6; }
+.result .lbl { font-family: var(--display); font-size: 24px; color: var(--gold); letter-spacing: .04em; }
+.result .em { font-size: 120px; line-height: 1.1; animation: pop .6s cubic-bezier(.2,1.6,.4,1); }
+.result .nm { font-family: var(--display); font-size: 56px; line-height: 1.1; color: var(--berry); word-break: keep-all; overflow-wrap: anywhere; animation: pop .6s .1s cubic-bezier(.2,1.6,.4,1) both; }
+.result .msg { color: var(--fg); font-size: 18px; font-weight: 700; margin-top: 4px; }
+.result .tally { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+.result .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: min(100%, 360px); margin-top: 22px; }
+@keyframes pop { 0% { transform: scale(0) } 100% { transform: scale(1) } }
+#confetti { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 7; }
+
+.sound { position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); right: 12px; background: var(--surface); border: 0; border-radius: 50%; width: 40px; height: 40px; font-size: 18px; z-index: 8; }
+@media (prefers-reduced-motion: reduce) { .shake, .card.shuf, .card.wobble, .bomb.pulse { animation: none; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">점심 아이스크림 내기</div>
+    <h1>오늘의 <span>물주</span>는?</h1>
+    <p>오늘 있는 사람만 켜두고, 연출을 고른 뒤 아래 버튼을 누르세요.</p>
+  </header>
+
+  <section id="roster-sec">
+    <div class="head">
+      <h2>참가자<span class="count" id="count"></span></h2>
+      <button class="link" id="edit">편집</button>
+    </div>
+    <div class="roster" id="roster"></div>
+    <p class="hint" id="hint">이름을 탭하면 오늘 빠지는 사람으로 바뀌어요.</p>
+    <div class="add">
+      <button class="emoji-btn" id="emoji-btn" aria-label="캐릭터 고르기">🐻</button>
+      <input id="name" maxlength="10" placeholder="이름 입력" autocomplete="off" enterkeyhint="done">
+      <div class="palette" id="palette"></div>
+      <div class="btns">
+        <button class="btn" id="add-save">+ 멤버 저장</button>
+        <button class="btn alt" id="add-guest">+ 오늘만 게스트</button>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="head"><h2>연출 고르기</h2></div>
+    <div class="modes" id="modes"></div>
+  </section>
+
+  <section>
+    <div class="head">
+      <h2>누적 물주 랭킹</h2>
+      <button class="link" id="reset">기록 지우기</button>
+    </div>
+    <div class="rank" id="rank"></div>
+    <div class="last" id="last"></div>
+  </section>
+</div>
+
+<div class="dock"><button class="go" id="go">🍦 뽑기!</button></div>
+
+<div class="stage" id="stage" hidden>
+  <button class="sound" id="sound" aria-label="소리 켜고 끄기">🔊</button>
+  <div class="stage-title" id="stage-title"></div>
+  <div class="arena" id="arena"></div>
+  <div class="stage-sub" id="stage-sub"></div>
+  <div class="flash" id="flash"></div>
+</div>
+
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  };
+  const EMOJIS = ['🐻','🐰','🦊','🐸','🐱','🐶','🐼','🐯','🦁','🐷','🐵','🐧','🐙','🦄','🐲','👻','🤖','👽','🍓','🍑','🐳','🦖','🐥','🐹'];
+  const MODES = [
+    { id: 'bomb', name: '💣 폭탄 돌리기', desc: '점점 빨라지는 폭탄, 펑!' },
+    { id: 'slot', name: '🎰 슬롯머신', desc: '멈출 듯 한 칸 더' },
+    { id: 'roulette', name: '🎡 룰렛', desc: '경계선에서 아슬아슬' },
+    { id: 'spot', name: '🔦 스포트라이트', desc: '어둠 속 조명이 멈추면' },
+    { id: 'cards', name: '🃏 카드 뒤집기', desc: '마지막 두 장이 승부' },
+    { id: 'last', name: '🏃 최후의 1인', desc: '한 명씩 탈출, 남으면 당첨' },
+    { id: 'random', name: '🎲 랜덤 연출', desc: '연출도 뽑기로', wide: true }
+  ];
+  let players = store.get('gacha.players', []).map((p, i) => ({ id: 'p' + i + Date.now(), emoji: p.emoji, name: p.name, active: p.active !== false, guest: false }));
+  let counts = store.get('gacha.counts', {});
+  let history = store.get('gacha.history', []);
+  let mode = store.get('gacha.mode', 'bomb');
+  let muted = store.get('gacha.muted', false);
+  let pickEmoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+  let editing = false, resetArmed = false, running = false;
+
+  const savePlayers = () => store.set('gacha.players', players.filter(p => !p.guest).map(({ emoji, name, active }) => ({ emoji, name, active })));
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const rnd = n => { const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n; };
+  const shuffle = arr => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const tween = (dur, fn, ease = t => t) => new Promise(r => { const t0 = performance.now(); const f = now => { const p = Math.min(1, (now - t0) / dur); fn(ease(p), p); p < 1 ? requestAnimationFrame(f) : r(); }; requestAnimationFrame(f); });
+  const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
+
+  // ---------- sound ----------
+  let ac;
+  const audio = () => { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (ac && ac.state === 'suspended') ac.resume(); return ac; };
+  function beep(f = 900, d = .05, type = 'square', v = .06, delay = 0) {
+    if (muted) return; const a = audio(); if (!a) return;
+    const t = a.currentTime + delay, o = a.createOscillator(), g = a.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g).connect(a.destination); o.start(t); o.stop(t + d + .02);
+  }
+  function boomSound() {
+    if (muted) return; const a = audio(); if (!a) return;
+    const len = a.sampleRate * .8, buf = a.createBuffer(1, len, a.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.5);
+    const s = a.createBufferSource(), lp = a.createBiquadFilter(), g = a.createGain();
+    lp.type = 'lowpass'; lp.frequency.value = 900; g.gain.value = .9;
+    s.buffer = buf; s.connect(lp).connect(g).connect(a.destination); s.start();
+    beep(70, .5, 'sine', .5);
+  }
+  const fanfare = () => [523, 659, 784, 1047].forEach((f, i) => beep(f, i === 3 ? .5 : .14, 'triangle', .12, i * .12));
+  const drumroll = ms => { for (let t = 0; t < ms; t += 45) beep(140 + Math.random() * 40, .04, 'square', .035, t / 1000); };
+
+  // ---------- main screen ----------
+  function renderRoster() {
+    const on = players.filter(p => p.active).length;
+    $('#count').textContent = `${on} / ${players.length}명`;
+    $('#roster-sec').classList.toggle('editing', editing);
+    $('#edit').textContent = editing ? '완료' : '편집';
+    $('#roster').innerHTML = players.map(p => `
+      <button class="chip ${p.active ? 'on' : 'off'}" data-id="${p.id}" aria-pressed="${p.active}">
+        ${p.guest ? '<span class="tag">게스트</span>' : ''}
+        <span class="em">${esc(p.emoji)}</span><span class="nm">${esc(p.name)}</span>
+        <span class="del" data-del="${p.id}" role="button" aria-label="${esc(p.name)} 삭제">✕</span>
+      </button>`).join('');
+    if (!players.length) $('#roster').innerHTML = '<div class="empty" style="grid-column:1/-1">아직 멤버가 없어요. 아래에서 캐릭터를 고르고 이름을 넣으면 이 폰에 계속 저장돼요.</div>';
+    $('#hint').textContent = players.length ? '이름을 탭하면 오늘 빠지는 사람으로 바뀌어요.' : '';
+    $('#go').disabled = on < 2;
+    $('#go').textContent = on < 2 ? '2명 이상 켜주세요' : `🍦 ${on}명 중 1명 뽑기!`;
+  }
+  function renderModes() {
+    $('#modes').innerHTML = MODES.map(m => `<button class="mode ${m.wide ? 'wide' : ''} ${m.id === mode ? 'sel' : ''}" data-mode="${m.id}"><b>${m.name}</b><small>${m.desc}</small></button>`).join('');
+  }
+  function renderRank() {
+    const rows = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    const emojiOf = n => (players.find(p => p.name === n) || {}).emoji || '🍦';
+    $('#rank').innerHTML = rows.length
+      ? rows.map(([n, c], i) => `<div class="rank-row"><span class="pos">${i + 1}</span><span class="em">${esc(emojiOf(n))}</span><span>${esc(n)}</span><span class="n">${c}회</span></div>`).join('')
+      : '<div class="empty">아직 기록이 없어요. 첫 물주를 뽑아보세요.</div>';
+    const h = history[0];
+    $('#last').textContent = h ? `최근: ${h.date} ${h.name}` : '';
+    $('#reset').textContent = resetArmed ? '정말 지울까요? 한 번 더 탭' : '기록 지우기';
+    $('#reset').hidden = !rows.length;
+  }
+  function renderPalette() {
+    $('#emoji-btn').textContent = pickEmoji;
+    $('#palette').innerHTML = EMOJIS.map(e => `<button data-e="${e}" class="${e === pickEmoji ? 'sel' : ''}">${e}</button>`).join('');
+  }
+  const renderAll = () => { renderRoster(); renderModes(); renderRank(); renderPalette(); };
+
+  $('#roster').addEventListener('click', e => {
+    const del = e.target.closest('[data-del]');
+    if (del) { players = players.filter(p => p.id !== del.dataset.del); savePlayers(); renderRoster(); return; }
+    const chip = e.target.closest('.chip'); if (!chip) return;
+    const p = players.find(x => x.id === chip.dataset.id); p.active = !p.active;
+    savePlayers(); renderRoster();
+  });
+  $('#edit').onclick = () => { editing = !editing; renderRoster(); };
+  $('#emoji-btn').onclick = () => { $('#palette').hidden = !$('#palette').hidden; };
+  $('#palette').addEventListener('click', e => { const b = e.target.closest('[data-e]'); if (!b) return; pickEmoji = b.dataset.e; renderPalette(); $('#name').focus(); });
+  function addPlayer(guest) {
+    const name = $('#name').value.trim();
+    if (!name) { $('#name').focus(); $('#name').placeholder = '이름을 먼저 입력하세요'; return; }
+    players.push({ id: 'p' + Date.now() + rnd(1e6), emoji: pickEmoji, name, active: true, guest });
+    $('#name').value = '';
+    pickEmoji = EMOJIS[rnd(EMOJIS.length)];
+    savePlayers(); renderRoster(); renderPalette();
+  }
+  $('#add-save').onclick = () => addPlayer(false);
+  $('#add-guest').onclick = () => addPlayer(true);
+  $('#name').addEventListener('keydown', e => { if (e.key === 'Enter') addPlayer(false); });
+  $('#modes').addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if (!b) return; mode = b.dataset.mode; store.set('gacha.mode', mode); renderModes(); });
+  $('#reset').onclick = () => {
+    if (!resetArmed) { resetArmed = true; renderRank(); setTimeout(() => { resetArmed = false; renderRank(); }, 3000); return; }
+    counts = {}; history = []; store.set('gacha.counts', counts); store.set('gacha.history', history); resetArmed = false; renderRank();
+  };
+  $('#sound').onclick = () => { muted = !muted; store.set('gacha.muted', muted); $('#sound').textContent = muted ? '🔇' : '🔊'; };
+
+  // ---------- stage ----------
+  const arena = $('#arena');
+  const setStage = (title, sub = '') => { $('#stage-title').textContent = title; $('#stage-sub').textContent = sub; };
+  const flash = () => { const f = $('#flash'); f.classList.remove('go-flash'); void f.offsetWidth; f.classList.add('go-flash'); };
+  const shake = () => { const s = $('#stage'); s.classList.remove('shake'); void s.offsetWidth; s.classList.add('shake'); };
+  const cols = n => n <= 4 ? 2 : n <= 9 ? 3 : 4;
+  const tileHTML = p => `<span class="em">${esc(p.emoji)}</span><span class="nm">${esc(p.name)}</span>`;
+
+  // hop schedule: intervals from a → b ms, summing to ~total
+  function schedule(a, b, total) {
+    const out = []; let sum = 0, i = 0; const n = Math.max(6, Math.round(total / ((a + b) / 2)));
+    for (; i < n; i++) { const t = a * Math.pow(b / a, i / (n - 1)); out.push(t); sum += t; }
+    return out.map(t => t * total / sum);
+  }
+  function hopPath(n, steps, end) {
+    const path = []; let cur = rnd(n);
+    for (let i = 0; i < steps; i++) {
+      let next;
+      if (i === steps - 1) next = end;
+      else do { next = rnd(n); } while (next === cur || (i === steps - 2 && next === end));
+      path.push(next); cur = next;
+    }
+    return path;
+  }
+
+  const RUN = {
+    async slot(list, wi) {
+      setStage('🎰 슬롯머신', '멈춰라… 멈춰라…');
+      const order = shuffle(list.map((_, i) => i));
+      const reps = Math.max(4, Math.ceil(36 / list.length));
+      const seq = []; for (let r = 0; r < reps; r++) seq.push(...order);
+      const target = (reps - 1) * list.length + order.indexOf(wi);
+      arena.innerHTML = `<div class="reel"><div class="win"></div><div class="strip">${seq.map(i => `<div class="cell">${tileHTML(list[i]).replace('class="nm"', 'class="nm"')}</div>`).join('')}</div></div>`;
+      const strip = arena.querySelector('.strip');
+      const H = 100, at = pos => strip.style.transform = `translateY(${(1 - pos) * H}px)`;
+      let last = -1; const tick = pos => { const k = Math.floor(pos + .5); if (k !== last) { last = k; beep(1200, .03, 'square', .04); } };
+      await tween(5200, e => { const pos = e * (target - 1); at(pos); tick(pos); }, t => 1 - Math.pow(1 - t, 4));
+      await sleep(500);
+      setStage('🎰 슬롯머신', '어? 어??');
+      await tween(900, e => { const pos = target - 1 + e; at(pos); tick(pos); }, t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+    },
+
+    async roulette(list, wi) {
+      setStage('🎡 룰렛', '돌아간다~');
+      const n = list.length, seg = Math.PI * 2 / n;
+      const order = shuffle(list.map((_, i) => i));
+      arena.innerHTML = `<div class="wheel-box"><div class="pointer"></div><canvas></canvas><div class="hub">🍦</div></div>`;
+      const cv = arena.querySelector('canvas'), box = arena.querySelector('.wheel-box');
+      const size = box.clientWidth, dpr = window.devicePixelRatio || 1;
+      cv.width = cv.height = size * dpr; const c = cv.getContext('2d'); c.scale(dpr, dpr);
+      const cs = getComputedStyle(document.documentElement);
+      const colors = ['--berry', '--mint', '--gold', '--surface-2'].map(v => cs.getPropertyValue(v).trim());
+      const ink = [cs.getPropertyValue('--bg').trim(), cs.getPropertyValue('--fg').trim()];
+      const R = size / 2;
+      order.forEach((pi, k) => {
+        c.beginPath(); c.moveTo(R, R); c.arc(R, R, R - 4, k * seg, (k + 1) * seg); c.closePath();
+        const col = colors[(n % 4 === 1 && k === n - 1) ? 1 : k % 4];
+        c.fillStyle = col; c.fill(); c.lineWidth = 3; c.strokeStyle = ink[0]; c.stroke();
+        c.save(); c.translate(R, R); c.rotate((k + .5) * seg); c.textAlign = 'right'; c.textBaseline = 'middle';
+        c.fillStyle = col === colors[3] ? ink[1] : ink[0];
+        const fs = Math.max(13, Math.min(22, 120 / n + 8));
+        c.font = `700 ${fs}px ${cs.getPropertyValue('--body')}`;
+        c.fillText(`${list[pi].name} ${list[pi].emoji}`.slice(0, 14), R - 14, 0);
+        c.restore();
+      });
+      const k = order.indexOf(wi);
+      const edge = (rnd(2) ? 1 : -1) * (0.3 + rnd(100) / 100 * 0.16); // land near a border
+      const finalRot = -Math.PI / 2 - (k + .5 + edge) * seg + Math.PI * 2 * (6 + rnd(2));
+      const ptr = arena.querySelector('.pointer');
+      let lastSeg = 0;
+      await tween(7000, e => {
+        const r = e * finalRot; cv.style.transform = `rotate(${r}rad)`;
+        const s = Math.floor((r + Math.PI / 2) / seg);
+        if (s !== lastSeg) { lastSeg = s; beep(1500, .025, 'square', .04); ptr.classList.remove('tick'); void ptr.offsetWidth; ptr.classList.add('tick'); }
+      }, t => 1 - Math.pow(1 - t, 4));
+    },
+
+    async spot(list, wi) {
+      setStage('🔦 스포트라이트', '조명이 누구에게…');
+      arena.innerHTML = `<div class="tiles dark" style="--cols:${cols(list.length)}">${list.map(p => `<div class="tile">${tileHTML(p)}</div>`).join('')}</div>`;
+      const tiles = [...arena.querySelectorAll('.tile')];
+      const times = schedule(60, 650, 5600), path = hopPath(list.length, times.length, wi);
+      for (let i = 0; i < path.length; i++) {
+        tiles.forEach(t => t.classList.remove('lit')); tiles[path[i]].classList.add('lit');
+        beep(600 + (i % 2) * 200, .04, 'triangle', .07);
+        await sleep(times[i]);
+      }
+      setStage('🔦 스포트라이트', '두구두구두구…');
+      drumroll(900); await sleep(950);
+    },
+
+    async bomb(list, wi) {
+      setStage('💣 폭탄 돌리기', '터지기 전에 넘겨!');
+      const n = list.length;
+      arena.innerHTML = `<div class="ring">${list.map((p, i) => {
+        const a = -Math.PI / 2 + i * Math.PI * 2 / n, x = 50 + 38 * Math.cos(a), y = 50 + 38 * Math.sin(a);
+        return `<div class="tile" style="left:${x}%;top:${y}%">${tileHTML(p)}</div>`;
+      }).join('')}<div class="fuse"><div class="t">7</div><div class="bar"><i></i></div></div><div class="bomb pulse">💣</div><div class="boom">펑!</div></div>`;
+      const tiles = [...arena.querySelectorAll('.tile')], bomb = arena.querySelector('.bomb');
+      const fuseT = arena.querySelector('.fuse .t'), fuseBar = arena.querySelector('.fuse .bar i');
+      const total = 6600, times = schedule(520, 85, total), path = hopPath(n, times.length, wi);
+      const t0 = performance.now(); let alive = true;
+      (function fuse() { if (!alive) return; const left = Math.max(0, total - (performance.now() - t0)); fuseT.textContent = Math.ceil(left / 1000); fuseBar.style.width = (left / total * 100) + '%'; requestAnimationFrame(fuse); })();
+      for (let i = 0; i < path.length; i++) {
+        tiles.forEach(t => t.classList.remove('hot'));
+        const t = tiles[path[i]]; t.classList.add('hot');
+        bomb.style.left = t.style.left; bomb.style.top = t.style.top;
+        beep(i % 2 ? 1800 : 1400, .03, 'square', .05); buzz(15);
+        await sleep(times[i]);
+      }
+      alive = false; fuseT.textContent = '0'; fuseBar.style.width = '0%';
+      await sleep(250);
+      bomb.hidden = true; arena.querySelector('.boom').classList.add('on');
+      tiles[wi].classList.add('lose');
+      boomSound(); flash(); shake(); buzz([200, 60, 300]);
+      await sleep(800);
+    },
+
+    async cards(list, wi) {
+      setStage('🃏 카드 뒤집기', '섞는 중…');
+      const order = shuffle(list.map((_, i) => i));
+      arena.innerHTML = `<div class="tiles" style="--cols:${cols(list.length)}">${order.map(i => `<div class="card" data-p="${i}" style="--dx:${rnd(30) - 15}px;--dy:${rnd(20) - 10}px"><div class="in"><div class="b">?</div><div class="f">${tileHTML(list[i])}<span class="ok">통과 😮‍💨</span></div></div></div>`).join('')}</div>`;
+      const cards = [...arena.querySelectorAll('.card')];
+      cards.forEach(c => c.classList.add('shuf'));
+      for (let i = 0; i < 8; i++) beep(300 + rnd(200), .05, 'sawtooth', .03, i * .12);
+      await sleep(1100);
+      cards.forEach(c => c.classList.remove('shuf'));
+      const safe = shuffle(cards.filter(c => +c.dataset.p !== wi));
+      const per = Math.max(300, Math.min(800, 4200 / Math.max(1, safe.length)));
+      setStage('🃏 카드 뒤집기', '통과… 통과…');
+      for (let i = 0; i < safe.length; i++) {
+        if (i === safe.length - 1) {
+          setStage('🃏 카드 뒤집기', '마지막 두 장…!');
+          const two = [safe[i], cards.find(c => +c.dataset.p === wi)];
+          two.forEach(c => c.classList.add('wobble')); drumroll(1300); await sleep(1400);
+          two.forEach(c => c.classList.remove('wobble'));
+        }
+        safe[i].classList.add('flip'); beep(900, .06, 'triangle', .08);
+        await sleep(per);
+      }
+      const lc = cards.find(c => +c.dataset.p === wi);
+      lc.querySelector('.ok').textContent = '당첨 🍦'; lc.classList.add('loser', 'flip');
+      beep(200, .3, 'sawtooth', .1); flash(); buzz([100, 50, 200]);
+      await sleep(900);
+    },
+
+    async last(list, wi) {
+      setStage('🏃 최후의 1인', '살아남아라!');
+      const order = shuffle(list.map((_, i) => i));
+      arena.innerHTML = `<div class="list">${order.map(i => `<div class="row" data-p="${i}"><span class="em">${esc(list[i].emoji)}</span><span>${esc(list[i].name)}</span><span class="st"></span></div>`).join('')}</div>`;
+      const rows = [...arena.querySelectorAll('.row')];
+      const out = shuffle(rows.filter(r => +r.dataset.p !== wi));
+      const finalSafe = out.pop();
+      const per = Math.max(320, Math.min(850, 4200 / Math.max(1, out.length)));
+      await sleep(400);
+      for (const r of out) {
+        r.classList.add('stamp'); r.querySelector('.st').textContent = '생존! 휴~'; beep(1000, .08, 'triangle', .08);
+        await sleep(per * .55); r.classList.add('safe'); await sleep(per * .45);
+      }
+      setStage('🏃 최후의 1인', '둘 중 하나…!');
+      const lr = rows.find(r => +r.dataset.p === wi), two = [finalSafe, lr];
+      for (let i = 0; i < 14; i++) { two.forEach((r, k) => r.classList.toggle('hot', (i + k) % 2 === 0)); beep(500 + (i % 2) * 150, .05, 'square', .04); await sleep(80 + i * 12); }
+      two.forEach(r => r.classList.remove('hot'));
+      finalSafe.classList.add('stamp'); finalSafe.querySelector('.st').textContent = '생존! 휴~';
+      await sleep(350); finalSafe.classList.add('safe');
+      lr.classList.add('lose'); lr.querySelector('.st').textContent = '당첨 🍦';
+      beep(200, .3, 'sawtooth', .1); flash(); buzz([100, 50, 200]);
+      await sleep(900);
+    }
+  };
+
+  // ---------- confetti ----------
+  function confetti(canvas) {
+    const dpr = window.devicePixelRatio || 1, W = canvas.clientWidth, H = canvas.clientHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr; const c = canvas.getContext('2d'); c.scale(dpr, dpr);
+    const cs = getComputedStyle(document.documentElement);
+    const cols = ['--berry', '--mint', '--gold', '--fg'].map(v => cs.getPropertyValue(v).trim());
+    const ps = Array.from({ length: 140 }, () => ({ x: W / 2, y: H * .42, vx: (Math.random() - .5) * 14, vy: -Math.random() * 14 - 4, r: Math.random() * 6 + 4, c: cols[rnd(4)], a: Math.random() * 6, va: (Math.random() - .5) * .4 }));
+    const t0 = performance.now();
+    (function f(now) {
+      if (now - t0 > 3500 || !canvas.isConnected) return;
+      c.clearRect(0, 0, W, H);
+      ps.forEach(p => { p.vy += .35; p.vx *= .99; p.x += p.vx; p.y += p.vy; p.a += p.va; c.save(); c.translate(p.x, p.y); c.rotate(p.a); c.fillStyle = p.c; c.fillRect(-p.r / 2, -p.r / 4, p.r, p.r / 2); c.restore(); });
+      requestAnimationFrame(f);
+    })(t0);
+  }
+
+  function showResult(p, playedMode) {
+    counts[p.name] = (counts[p.name] || 0) + 1;
+    const d = new Date(), date = `${d.getMonth() + 1}/${d.getDate()}`;
+    history.unshift({ name: p.name, date }); history = history.slice(0, 30);
+    store.set('gacha.counts', counts); store.set('gacha.history', history);
+    const el = document.createElement('div'); el.className = 'result';
+    el.innerHTML = `<canvas id="confetti"></canvas>
+      <div class="lbl">🍦 오늘의 물주 🍦</div>
+      <div class="em">${esc(p.emoji)}</div>
+      <div class="nm">${esc(p.name)}</div>
+      <div class="msg">아이스크림 잘 먹을게요!</div>
+      <div class="tally">누적 ${counts[p.name]}회 당첨</div>
+      <div class="actions"><button class="btn" id="close">닫기</button><button class="btn alt" id="replay">같은 연출 다시 보기</button></div>`;
+    $('#stage').appendChild(el);
+    confetti(el.querySelector('#confetti')); fanfare();
+    el.querySelector('#close').onclick = closeStage;
+    el.querySelector('#replay').onclick = () => replay(p, playedMode);
+  }
+  function closeStage() { $('#stage').hidden = true; arena.innerHTML = ''; $('#stage').querySelectorAll('.result').forEach(r => r.remove()); running = false; renderAll(); }
+
+  let lastList = null;
+  async function play(list, wi, m) {
+    $('#stage').querySelectorAll('.result').forEach(r => r.remove());
+    $('#stage').hidden = false; $('#sound').textContent = muted ? '🔇' : '🔊';
+    await RUN[m](list, wi);
+    if (m !== 'bomb') { flash(); shake(); boomSound(); buzz([150, 60, 250]); }
+    await sleep(350);
+    return list[wi];
+  }
+  // replay shows the same result again without counting twice
+  async function replay(p, m) {
+    $('#stage').querySelectorAll('.result').forEach(r => r.remove());
+    const wi = lastList.indexOf(p);
+    await play(lastList, wi, m);
+    const el = document.createElement('div'); el.className = 'result';
+    el.innerHTML = `<canvas id="confetti"></canvas><div class="lbl">🍦 다시 봐도 물주 🍦</div><div class="em">${esc(p.emoji)}</div><div class="nm">${esc(p.name)}</div><div class="msg">결과는 바뀌지 않아요 😎</div><div class="actions"><button class="btn" id="close">닫기</button><button class="btn alt" id="replay">한 번 더 보기</button></div>`;
+    $('#stage').appendChild(el); confetti(el.querySelector('#confetti')); fanfare();
+    el.querySelector('#close').onclick = closeStage;
+    el.querySelector('#replay').onclick = () => replay(p, m);
+  }
+
+  $('#go').onclick = async () => {
+    if (running) return;
+    const list = players.filter(p => p.active); if (list.length < 2) return;
+    running = true; audio(); buzz(30);
+    const ids = MODES.filter(m => m.id !== 'random').map(m => m.id);
+    const m = mode === 'random' ? ids[rnd(ids.length)] : mode;
+    lastList = list;
+    const wi = rnd(list.length);
+    const p = await play(list, wi, m);
+    showResult(p, m);
+  };
+
+  try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(() => {}); } catch (e) {}
+  renderAll();
+})();
+</script>
+</body>
+</html>
